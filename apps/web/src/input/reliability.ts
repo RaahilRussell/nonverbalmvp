@@ -1,0 +1,3 @@
+export type ReliabilityTrial = { id: number; target: { x: number; y: number }; hit: boolean; latencyMs?: number };
+export function reliabilityTargets(count = 40): ReliabilityTrial[] { return Array.from({ length: count }, (_, id) => ({ id, target: { x: .08 + ((id * 37) % 84) / 100, y: .12 + ((id * 61) % 72) / 100 }, hit: false })); }
+export function reliabilitySummary(trials: ReliabilityTrial[]) { const hits = trials.filter(t => t.hit); const latencies = hits.map(t => t.latencyMs ?? 0).sort((a, b) => a - b); return { total: trials.length, hits: hits.length, accuracy: trials.length ? hits.length / trials.length : 0, medianLatencyMs: latencies.length ? latencies[Math.floor(latencies.length / 2)] : undefined }; }

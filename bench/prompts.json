@@ -1,0 +1,14 @@
+[
+  {"id":"d01","prompt":"Should we invite the whole team?","stance":"NO","intended":"too many people"},
+  {"id":"d02","prompt":"Would you like to leave now?","stance":"NO","intended":"not ready"},
+  {"id":"d03","prompt":"Should we order pizza?","stance":"NO","intended":"not hungry"},
+  {"id":"d04","prompt":"Can we move it to tomorrow?","stance":"NO","intended":"busy today"},
+  {"id":"d05","prompt":"Do you want the blue one?","stance":"NO","intended":"prefer red"},
+  {"id":"d06","prompt":"Should we tell them now?","stance":"NO","intended":"keep surprise"},
+  {"id":"a01","prompt":"Should we take the train?","stance":"YES","intended":"faster"},
+  {"id":"a02","prompt":"Would you like some tea?","stance":"YES","intended":"sounds good"},
+  {"id":"a03","prompt":"Can we start at six?","stance":"YES","intended":"works for me"},
+  {"id":"a04","prompt":"Should I bring a jacket?","stance":"YES","intended":"good idea"},
+  {"id":"a05","prompt":"Do you want to sit outside?","stance":"YES","intended":"nice weather"},
+  {"id":"a06","prompt":"Should we save this for later?","stance":"YES","intended":"better timing"}
+]

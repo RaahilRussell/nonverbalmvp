@@ -1,2 +1,4 @@
-const scenarios = 12;
-console.log(`Bake-off placeholder: ${scenarios} scenarios are defined by the brief; live providers are not configured.`);
+import prompts from './prompts.json';
+type Run = { provider: string; latencyMs: number; violation: boolean; intendedHit: boolean; expansionHit: boolean };
+export function chooseWinner(runs: Run[]) { return [...new Set(runs.map(r => r.provider))].map(provider => { const rows = runs.filter(r => r.provider === provider); return { provider, violationRate: rows.filter(r => r.violation).length / rows.length, intendedHitRate: rows.filter(r => r.intendedHit).length / rows.length, p95: [...rows].sort((a, b) => a.latencyMs - b.latencyMs)[Math.max(0, Math.ceil(rows.length * .95) - 1)]?.latencyMs ?? Infinity }; }).sort((a, b) => a.violationRate - b.violationRate || b.intendedHitRate - a.intendedHitRate || a.p95 - b.p95)[0]; }
+console.log(`Bake-off harness: ${prompts.length} scenarios × 10 runs per provider. Live providers are only measured when configured.`);
