@@ -1,0 +1,3 @@
+import type { ReasonChip, Stance } from './types';
+const sets: Record<'NO' | 'YES', string[]> = { NO: ["I don't want to", 'Not right now', "It's too much", 'I disagree'], YES: ['Sounds good', "I'd like that", "Let's do it", 'Good idea'] };
+export function staticChips(stance: Stance, count = 4): ReasonChip[] { if (!(stance in sets)) return []; return sets[stance as 'NO' | 'YES'].slice(0, count).map((exactShortReason, i) => ({ id: `static-${i}`, label: exactShortReason, exactShortReason, preview: stance === 'NO' ? `No, ${exactShortReason.toLowerCase()}.` : `Yes, ${exactShortReason.toLowerCase()}.` })); }

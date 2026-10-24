@@ -1,0 +1,1 @@
+export function switchKey(event: KeyboardEvent, advance: () => void, select: () => void) { if (event.key === ' ') { event.preventDefault(); advance(); } if (event.key === 'Enter') { event.preventDefault(); select(); } }

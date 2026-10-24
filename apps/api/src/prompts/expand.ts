@@ -1,0 +1,1 @@
+export const EXPAND_SYSTEM = 'Return JSON only. Expand only the user selected initials or keywords into up to three readings. Preserve stance and add no new ideas. The user must review every candidate before speech.';

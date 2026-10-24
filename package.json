@@ -1,0 +1,25 @@
+{
+  "name": "stance",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["packages/core", "apps/api", "apps/web"],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev --workspace @stance/api\" \"npm run dev --workspace @stance/web\"",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run build --workspace @stance/web",
+    "eval": "tsx bench/bakeoff.ts",
+    "db:dev": "echo 'SpacetimeDB is intentionally deferred until the go/no-go gate.'"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8"
+  }
+}

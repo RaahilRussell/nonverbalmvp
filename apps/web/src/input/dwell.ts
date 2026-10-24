@@ -1,0 +1,4 @@
+export type DwellState = { targetId?: string; startedAt?: number; lockedUntil?: number; fired: boolean };
+export function enterDwell(state: DwellState, targetId: string, now: number): DwellState { if (state.lockedUntil && now < state.lockedUntil) return state; if (state.targetId === targetId) return state; return { targetId, startedAt: now, fired: false, lockedUntil: state.lockedUntil }; }
+export function leaveDwell(state: DwellState): DwellState { return { targetId: undefined, startedAt: undefined, lockedUntil: state.lockedUntil, fired: false }; }
+export function tickDwell(state: DwellState, now: number, dwellMs: number, lockoutMs: number): DwellState & { fire: boolean } { if (!state.targetId || state.startedAt === undefined || state.fired || now - state.startedAt < dwellMs) return { ...state, fire: false }; return { ...state, fired: true, lockedUntil: now + lockoutMs, fire: true }; }

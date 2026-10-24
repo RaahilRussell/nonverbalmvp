@@ -1,0 +1,1 @@
+export const REASONS_SYSTEM = 'Return JSON only. The stance is already chosen. Give distinct 1-4 word reasons and 3-8 word first-person short reasons. Do not invent facts, hedge, question, apologize, agree, or soften.';

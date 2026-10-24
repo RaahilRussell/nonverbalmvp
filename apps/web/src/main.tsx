@@ -1,0 +1,49 @@
+import React, { useEffect, useMemo, useReducer, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { DEFAULT_FLAGS, loadFlags, saveFlags, staticChips } from '@stance/core';
+import type { Flags, ReasonChip, Stance } from '@stance/core';
+import { initialState, reducer } from './state/machine';
+import { exportCsv, logTurn, readTurns } from './telemetry/logger';
+import { playSpeech, stopSpeech } from './speech/tts';
+import { createBrowserStt } from './speech/stt';
+import './styles.css';
+
+const stanceButtons: { label: Stance; className: string }[] = [{ label: 'NO', className: 'no' }, { label: 'YES', className: 'yes' }, { label: 'WAIT', className: 'wait' }, { label: 'SOMETHING ELSE', className: 'else' }];
+const groups = ['ABCDE', 'FGHIJ', 'KLMNO', 'PQRST', 'UVWXY', 'Z.?␣⌫'];
+function speak(text: string, done: () => void) { if (!text) return; window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.onend = done; utterance.onerror = done; window.speechSynthesis.speak(utterance); }
+
+function App() {
+  const [state, dispatch] = useReducer(reducer, { ...initialState, flags: loadFlags() });
+  const [turnText, setTurnText] = useState(''); const [showLab, setShowLab] = useState(false); const [group, setGroup] = useState<string | null>(null);
+  useEffect(() => { if (state.speech) void playSpeech(state.speech.text, state.flags.TTS_PROVIDER, () => dispatch({ type: 'SPEECH_DONE' })); }, [state.speech?.startedAt]);
+  useEffect(() => { const stt = createBrowserStt(text => { const turn = { id: crypto.randomUUID(), revision: 1, text, endedAt: Date.now() }; dispatch({ type: 'TURN', turn }); }); if (state.flags.STT_PROVIDER === 'browser' && stt.supported) { stt.start(); return () => stt.stop(); } return undefined; }, [state.flags.STT_PROVIDER]);
+  useEffect(() => { if (state.speech?.text && state.turn) logTurn({ turnId: state.turn.id, path: state.phase, stance: state.stance, selections: 1, repairs: 0, flags: state.flags, at: Date.now() }); }, [state.speech?.startedAt]);
+  useEffect(() => saveFlags(state.flags), [state.flags]);
+  const commitTurn = () => { if (!turnText.trim()) return; const turn = { id: crypto.randomUUID(), revision: 1, text: turnText.trim(), endedAt: Date.now() }; setTurnText(''); dispatch({ type: 'TURN', turn }); };
+  const chooseStance = (stance: Stance) => { dispatch({ type: 'STANCE', stance }); if (stance === 'NO' || stance === 'YES') { const turn = state.turn; if (turn) fetch('/api/reasons', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ turn, history: [], stance, count: state.flags.CHIP_COUNT }) }).then(r => r.ok ? r.json() : null).then(data => { if (data?.turnId === turn.id && data.revision === turn.revision) dispatch({ type: 'CHIPS', turnId: data.turnId, revision: data.revision, chips: data.options.map((c: any) => ({ ...c, preview: stance === 'NO' ? `No, ${c.exactShortReason.toLowerCase()}.` : `Yes, ${c.exactShortReason.toLowerCase()}.` })) }); else dispatch({ type: 'CHIPS', turnId: turn.id, revision: turn.revision, chips: staticChips(stance, state.flags.CHIP_COUNT) }); }).catch(() => dispatch({ type: 'CHIPS', turnId: turn.id, revision: turn.revision, chips: staticChips(stance, state.flags.CHIP_COUNT) })); } };
+  const speakChip = (chip: ReasonChip) => dispatch({ type: 'CHIP', chip });
+  const phase = state.phase;
+  const currentChips = state.chips.length ? state.chips : (state.stance ? staticChips(state.stance, state.flags.CHIP_COUNT) : []);
+  const setFlag = (key: keyof Flags, value: any) => dispatch({ type: 'FLAGS', flags: { ...state.flags, [key]: value } });
+  return <div className="app">
+    <header><div className="brand"><span className="mark">S</span><span>stance</span></div><div className="header-actions"><span className={`badge ${state.flags.LLM_PROVIDER === 'mock' ? 'mock' : 'failing'}`}>{state.flags.LLM_PROVIDER === 'mock' ? 'MOCK' : 'FAILING'}</span><button className="lab-toggle" onClick={() => setShowLab(!showLab)}>{showLab ? 'Close lab' : 'Lab'}</button></div></header>
+    <main>
+      <section className="partner"><div className="eyebrow">Partner turn</div><div className="partner-text">{state.turn?.text || 'What would you like to respond to?'}</div><form onSubmit={e => { e.preventDefault(); commitTurn(); }}><input value={turnText} onChange={e => setTurnText(e.target.value)} placeholder="Type what your partner said" aria-label="Partner turn" /><button>End turn</button></form></section>
+      {state.trackingLost && <div className="notice">Face not found — pointer frozen. Switch or mouse input is still available.</div>}
+      {state.speech && <div className="speaking"><span className="pulse" /> Speaking: “{state.speech.text}” <button onClick={() => dispatch({ type: 'STOP' })}>STOP</button></div>}
+      <section className="workspace">
+        {phase === 'START' && <div className="welcome"><p className="kicker">A communication tool for keeping your stance</p><h1>Say no first.<br /><em>Then say why.</em></h1><p className="intro">A fast, controlled path from a partner’s question to your own words.</p><button className="start" onClick={() => dispatch({ type: 'START' })}>Start a session</button></div>}
+        {(phase === 'LISTENING' || phase === 'STANCE_SPOKEN') && <div className="prompt"><h2>How do you want to respond?</h2><p>Choose a stance. You can always write your own reason.</p></div>}
+        {phase === 'REASONS' && <div className="reason-view"><div className="section-title"><h2>What’s your reason?</h2><span>Choose a reason to say</span></div><div className="chips">{currentChips.map(chip => <button className="chip" key={chip.id} onClick={() => speakChip(chip)}><strong>{chip.label}</strong><small>{chip.preview}</small></button>)}<button className="chip own" onClick={() => dispatch({ type: 'OWN_REASON' })}><strong>MY OWN REASON</strong><small>Type exactly what you mean</small></button></div></div>}
+        {phase === 'COMPOSE' && <div className="compose"><div className="section-title"><h2>Build your own reason</h2><span>{state.typed || 'Choose letters or type below'}</span></div><input className="compose-input" value={state.typed} onChange={e => dispatch({ type: 'KEY', key: e.target.value.slice(-1) })} placeholder="Your words stay yours" aria-label="Your reason" /><div className="keyboard">{(group ? group.split('') : groups).map(key => <button key={key} onClick={() => group ? (dispatch({ type: 'KEY', key }), setGroup(null)) : setGroup(key)}>{key}</button>)}</div><div className="compose-actions"><button className="primary" onClick={() => dispatch({ type: 'SAY_EXACTLY' })} disabled={!state.typed}>SAY EXACTLY</button><button onClick={() => fetch('/api/expand', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ turn: state.turn, history: [], stance: state.stance === 'YES' ? 'YES' : 'NO', userText: state.typed, source: 'initials' }) }).then(r => r.json()).then(x => dispatch({ type: 'EXPANSIONS', candidates: x.candidates ?? [] }))} disabled={!state.typed}>DONE — expand</button></div></div>}
+        {phase === 'APPROVE' && <div className="approve"><div className="section-title"><h2>Choose what to say</h2><span>Nothing speaks until you select it</span></div>{state.expanded.map(text => <button className="approval-option" key={text} onClick={() => dispatch({ type: 'APPROVE', text })}>{text}</button>)}{state.typed && <button className="approval-option exact" onClick={() => dispatch({ type: 'APPROVE', text: state.typed })}>Use exactly what I typed: “{state.typed}”</button>}</div>}
+        {phase === 'SPOKEN' && !state.speech && <div className="done"><h2>That’s been said.</h2><button onClick={() => dispatch({ type: 'WRONG' })}>THAT’S NOT IT</button></div>}
+        {phase === 'BASELINE' && <div className="prompt"><h2>Baseline mode</h2><p>Use the same letter groups and dwell settings without stance shortcuts.</p><button className="primary" onClick={() => dispatch({ type: 'START' })}>Begin baseline</button></div>}
+      </section>
+      {showLab && <aside className="lab"><div className="section-title"><h2>Lab panel</h2><span>Local controls and evidence</span></div><label>Input mode<select value={state.flags.INPUT_MODE} onChange={e => setFlag('INPUT_MODE', e.target.value)}><option>mouse</option><option>switch</option><option>head</option><option>gaze</option></select></label><label>Dwell {state.flags.DWELL_MS} ms<input type="range" min="400" max="2000" step="100" value={state.flags.DWELL_MS} onChange={e => setFlag('DWELL_MS', Number(e.target.value))} /></label><label>Output mode<select value={state.flags.CHIP_OUTPUT_MODE} onChange={e => setFlag('CHIP_OUTPUT_MODE', e.target.value)}><option>exact</option><option>template</option><option>approve</option></select></label><label>Mode<select value={state.flags.MODE} onChange={e => setFlag('MODE', e.target.value)}><option>stance</option><option>baseline</option></select></label><div className="lab-row"><span>LLM provider</span><span className="badge mock">MOCK</span></div><div className="lab-row"><span>Telemetry</span><span className="badge local">LOCAL</span></div><button onClick={() => exportCsv(readTurns())}>Export CSV</button></aside>}
+      <nav className="stance-row">{stanceButtons.map(b => <button key={b.label} className={`stance ${b.className}`} onClick={() => chooseStance(b.label)} disabled={phase === 'START' || phase === 'SPOKEN' || phase === 'APPROVE'}>{b.label}</button>)}</nav>
+      <div className="bottom-actions"><button onClick={() => { stopSpeech(); dispatch({ type: 'STOP' }); }}>STOP</button><button onClick={() => dispatch({ type: 'BACK' })}>BACK</button></div>
+    </main>
+  </div>;
+}
+createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
