@@ -1,0 +1,5 @@
+import { enterDwell, leaveDwell, tickDwell, type DwellState } from './dwell';
+export type PointerPoint = { x: number; y: number; confidence: number };
+export type PointerController = { point?: PointerPoint; lost: boolean; dwell: DwellState; targetId?: string };
+export function pointerTargetAt(point: PointerPoint | undefined): string | undefined { if (!point) return undefined; const element = document.elementFromPoint(point.x * window.innerWidth, point.y * window.innerHeight)?.closest<HTMLElement>('[data-target-id]'); return element?.dataset.targetId; }
+export function updatePointer(controller: PointerController, point: PointerPoint | undefined, now: number, dwellMs: number, lockoutMs: number): PointerController & { fire?: string } { const targetId = pointerTargetAt(point); let dwell = controller.dwell; if (targetId) dwell = enterDwell(dwell, targetId, now); else dwell = leaveDwell(dwell); const result = tickDwell(dwell, now, dwellMs, lockoutMs); return { point, lost: !point, dwell: result, targetId, fire: result.fire ? targetId : undefined }; }
