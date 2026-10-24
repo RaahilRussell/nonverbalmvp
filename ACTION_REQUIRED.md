@@ -13,15 +13,15 @@ The currently verified defaults are voice `db6b0ed5-d5d3-463d-ae85-518a07d3c2b4`
 
 To enable the Anthropic adapter, also provide `ANTHROPIC_API_KEY` and set `LLM_PROVIDER=anthropic`. The adapter uses the current Messages API structured JSON format, validates the result with zod, and falls back to static chips on timeout, HTTP error, or invalid output.
 
-Reserved server-only slots for future provider bake-off work:
+Optional server-only provider slots:
 
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL`
 - `GROQ_API_KEY`
 - `GROQ_MODEL`
 
-Gemini and Groq remain MOCK until their current structured-output/API contracts are verified and implemented.
+Anthropic, Gemini, and Groq are implemented behind `LLM_PROVIDER`; use one provider at a time. A failing live request automatically returns deterministic mock chips, preserving the offline path.
 
 Then run `npm run dev`, select Cartesia in the Lab panel, and test a selected utterance. The server route returns `501 TODO_API_CARTESIA_TTS` until all values exist; it never labels Cartesia LIVE without a successful request.
 
-Still intentionally blocked: `TODO_API_ANTHROPIC`, `TODO_API_GEMINI`, `TODO_API_GROQ`, `TODO_API_CARTESIA_STT`, and `TODO_SPACETIME`.
+Still intentionally blocked: `TODO_API_CARTESIA_STT` and `TODO_SPACETIME`. Provider keys are optional because mock fallback remains available.

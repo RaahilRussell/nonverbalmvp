@@ -16,6 +16,8 @@
 | Switch scanning | WORKING | Space advance / Enter select primitive |
 | 40-target reliability screen | WORKING | Ordered 40-target UI and local accuracy/latency score; protocol still needs human runs |
 | Anthropic provider | PARTIAL | Server-only Messages API structured JSON adapter with zod/2.5s fallback; live success requires key and `LLM_PROVIDER=anthropic` |
+| Gemini provider | PARTIAL | Server-only `generateContent` structured JSON adapter with zod/2.5s fallback; select with `LLM_PROVIDER=gemini` |
+| Groq provider | PARTIAL | Server-only OpenAI-compatible structured JSON adapter with zod/2.5s fallback; live route validated at about 1.1s |
 | Approve screen / expansions | WORKING | Generated candidates and exact-typed approval |
 | Cartesia TTS | PARTIAL | Server route and AudioContext client ready; live test requires keys |
 | Browser SpeechRecognition | PARTIAL | Optional browser adapter with echo guard; browser support varies |
