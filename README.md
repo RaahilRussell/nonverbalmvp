@@ -13,6 +13,8 @@ The browser app is at `http://127.0.0.1:5173`; the API is at `http://127.0.0.1:8
 
 For Anthropic-backed chips, set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` in the server `.env`. The adapter validates structured JSON and falls back to mock chips on any failure.
 
+The same root `.env` contains reserved `GEMINI_API_KEY` / `GEMINI_MODEL` and `GROQ_API_KEY` / `GROQ_MODEL` slots for the provider bake-off; they are not live integrations yet.
+
 ## Verification
 
 ```sh
