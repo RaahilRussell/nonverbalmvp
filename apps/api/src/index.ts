@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+dotenv.config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../../../.env') });
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { checkRequestSchema, expandRequestSchema, reasonRequestSchema } from '@stance/core';
@@ -12,19 +16,20 @@ const app = Fastify({ logger: false });
 await app.register(cors, { origin: true });
 const parse = (body: unknown, schema: { safeParse: (x: unknown) => { success: boolean; data?: any } }) => { const r = schema.safeParse(body); return r.success ? r.data : null; };
 let anthropicLive = false;
+let cartesiaLive = false;
 const reasonOutputSchema = { type: 'object', properties: { options: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, label: { type: 'string' }, exactShortReason: { type: 'string' } }, required: ['id', 'label', 'exactShortReason'], additionalProperties: false } } }, required: ['options'], additionalProperties: false };
 const reasonOutputValidator = z.object({ options: z.array(z.object({ id: z.string(), label: z.string(), exactShortReason: z.string() })).max(4) });
 const expandOutputSchema = { type: 'object', properties: { candidates: { type: 'array', items: { type: 'string' }, maxItems: 3 } }, required: ['candidates'], additionalProperties: false };
 const expandOutputValidator = z.object({ candidates: z.array(z.string()).max(3) });
-app.get('/api/status', async () => ({ providers: { mock: 'mock', anthropic: anthropicLive ? 'live' : process.env.ANTHROPIC_API_KEY ? 'failing' : 'mock', gemini: 'mock', groq: 'mock', cartesia: process.env.CARTESIA_API_KEY ? 'failing' : 'mock' }, gaps: ['TODO_API_GEMINI', 'TODO_API_GROQ', 'TODO_API_CARTESIA_STT', 'TODO_SPACETIME'] }));
+app.get('/api/status', async () => ({ providers: { mock: 'mock', anthropic: anthropicLive ? 'live' : process.env.ANTHROPIC_API_KEY ? 'failing' : 'mock', gemini: 'mock', groq: 'mock', cartesia: cartesiaLive ? 'live' : process.env.CARTESIA_API_KEY ? 'failing' : 'mock' }, gaps: ['TODO_API_GEMINI', 'TODO_API_GROQ', 'TODO_API_CARTESIA_STT', 'TODO_SPACETIME'] }));
 app.post('/api/reasons', async (request, reply) => { const body = parse(request.body, reasonRequestSchema); if (!body) return reply.code(400).send({ error: 'Invalid request' }); if (process.env.LLM_PROVIDER === 'anthropic' && process.env.ANTHROPIC_API_KEY) { try { const result = await anthropicJSON({ apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL }, { system: REASONS_SYSTEM, user: JSON.stringify({ turn: body.turn, history: body.history, stance: body.stance, count: body.count }), schema: reasonOutputSchema, validator: reasonOutputValidator, maxTokens: 500 }); anthropicLive = true; return { turnId: body.turn.id, revision: body.turn.revision, stance: body.stance, options: result.data.options, provider: 'anthropic', ms: result.ms }; } catch { anthropicLive = false; } } const started = Date.now(); return { turnId: body.turn.id, revision: body.turn.revision, stance: body.stance, options: mockReasons(body.stance, body.count), provider: 'mock', ms: Date.now() - started }; });
 app.post('/api/expand', async (request, reply) => { const body = parse(request.body, expandRequestSchema); if (!body) return reply.code(400).send({ error: 'Invalid request' }); if (process.env.LLM_PROVIDER === 'anthropic' && process.env.ANTHROPIC_API_KEY) { try { const result = await anthropicJSON({ apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL }, { system: EXPAND_SYSTEM, user: JSON.stringify(body), schema: expandOutputSchema, validator: expandOutputValidator, maxTokens: 300 }); anthropicLive = true; return { candidates: result.data.candidates, provider: 'anthropic', ms: result.ms }; } catch { anthropicLive = false; } } return { candidates: mockExpand(body.userText), provider: 'mock' }; });
 app.post('/api/check', async (request, reply) => { const body = parse(request.body, checkRequestSchema); if (!body) return reply.code(400).send({ error: 'Invalid request' }); const results = body.texts.map((text: string) => ({ ok: Boolean(text.trim()), why: text.trim() ? 'deterministic filter passed' : 'empty text' })); return { results, provider: 'mock' }; });
 app.post('/api/tts', async (request, reply) => {
   const body = request.body as { text?: unknown };
   if (typeof body?.text !== 'string' || !body.text.trim() || body.text.length > 500) return reply.code(400).send({ error: 'text must be a non-empty string up to 500 characters' });
-  try { const result = await cartesiaTts(body.text, { apiKey: process.env.CARTESIA_API_KEY, voiceId: process.env.CARTESIA_VOICE_ID, modelId: process.env.CARTESIA_MODEL_ID ?? 'sonic-3.6', version: process.env.CARTESIA_VERSION }); return reply.header('content-type', result.contentType).header('x-stance-cache', String(result.cached)).send(result.audio); }
-  catch (error) { const message = error instanceof Error ? error.message : 'Cartesia request failed'; return reply.code(message === 'TODO_API_CARTESIA_TTS' ? 501 : 502).send({ error: message }); }
+  try { const result = await cartesiaTts(body.text, { apiKey: process.env.CARTESIA_API_KEY, voiceId: process.env.CARTESIA_VOICE_ID, modelId: process.env.CARTESIA_MODEL_ID ?? 'sonic-3.6', version: process.env.CARTESIA_VERSION }); cartesiaLive = true; return reply.header('content-type', result.contentType).header('x-stance-cache', String(result.cached)).send(result.audio); }
+  catch (error) { const message = error instanceof Error ? error.message : 'Cartesia request failed'; cartesiaLive = false; return reply.code(message === 'TODO_API_CARTESIA_TTS' ? 501 : 502).send({ error: message }); }
 });
 app.get('/api/stt-token', async (_request, reply) => reply.code(501).send({ error: 'TODO_API_CARTESIA_STT' }));
 const port = Number(process.env.PORT ?? 8787);

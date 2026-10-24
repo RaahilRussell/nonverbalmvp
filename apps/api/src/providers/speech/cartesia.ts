@@ -3,7 +3,7 @@ const cache = new Map<string, Buffer>();
 export type CartesiaConfig = { apiKey?: string; voiceId?: string; modelId?: string; version?: string };
 
 export async function cartesiaTts(text: string, config: CartesiaConfig): Promise<{ audio: Buffer; contentType: string; cached: boolean }> {
-  const { apiKey, voiceId, modelId, version } = config;
+  const { apiKey, voiceId = 'db6b0ed5-d5d3-463d-ae85-518a07d3c2b4', modelId = 'sonic-3.6', version = '2026-08-14' } = config;
   if (!apiKey || !voiceId || !modelId || !version) throw new Error('TODO_API_CARTESIA_TTS');
   const key = `${text}\u0000${voiceId}\u0000${modelId}\u0000${version}`;
   const existing = cache.get(key);

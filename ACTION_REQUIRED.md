@@ -9,6 +9,8 @@ To enable M6 Cartesia TTS, provide these server-only values in `.env` (never `VI
 - `CARTESIA_MODEL_ID` (the current docs default is `sonic-3.6`)
 - `CARTESIA_VERSION` (use the version required by your Cartesia account/docs)
 
+The currently verified defaults are voice `db6b0ed5-d5d3-463d-ae85-518a07d3c2b4`, model `sonic-3.6`, and Cartesia-Version `2026-08-14`. You can replace the voice ID with another Cartesia voice.
+
 To enable the Anthropic adapter, also provide `ANTHROPIC_API_KEY` and set `LLM_PROVIDER=anthropic`. The adapter uses the current Messages API structured JSON format, validates the result with zod, and falls back to static chips on timeout, HTTP error, or invalid output.
 
 Reserved server-only slots for future provider bake-off work:
